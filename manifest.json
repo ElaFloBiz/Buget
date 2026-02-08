@@ -1,0 +1,8 @@
+{
+  "name": "Buget Local",
+  "short_name": "Buget",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111"
+}
