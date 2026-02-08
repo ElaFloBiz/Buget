@@ -310,7 +310,6 @@ document.getElementById("saveTx").addEventListener("click", () => {
   state.transactions.sort((a,b) => new Date(a.dateISO) - new Date(b.dateISO));
   saveState();
 
-  // reset fields
   document.getElementById("txAmount").value = "";
   document.getElementById("txNote").value = "";
   document.getElementById("categoryCustom").value = "";
@@ -363,7 +362,6 @@ document.getElementById("openReport").addEventListener("click", () => {
 
 /* ===== backup JSON ===== */
 document.getElementById("exportJson").addEventListener("click", () => {
-  // marchează backup
   state.lastBackupISO = isoToday();
   saveState();
   updateBackupReminder();
@@ -385,7 +383,6 @@ document.getElementById("importJson").addEventListener("change", async (e) => {
     const text = await file.text();
     const s = JSON.parse(text);
     if (!s || !Array.isArray(s.transactions)) throw new Error("Fișier invalid.");
-    // migrare minimă
     s.budgets ??= structuredClone(DEFAULT_STATE.budgets);
     s.categories ??= structuredClone(DEFAULT_STATE.categories);
     s.transactions ??= [];
@@ -531,13 +528,23 @@ function renderTxList() {
 
     it.innerHTML = `
       <div class="itemTop">
-        <div><span class="badge">${label}</span> <span class="small">${fmtDate(t.dateISO)}</span></div>
-        <div class="badge">${baniToRON(t.amountBani)}</div>
+        <div>
+          <span class="badge">${label}</span>
+          <span class="small">${fmtDate(t.dateISO)}</span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <div class="badge">${baniToRON(t.amountBani)}</div>
+          <button class="chip editBtn" data-id="${t.id}" style="padding:6px 10px;">Editează</button>
+        </div>
       </div>
       <div class="small">${escapeHtml(flow)}</div>
       <div class="small">${main}</div>
     `;
+
     list.appendChild(it);
+
+    const b = it.querySelector(".editBtn");
+    b.addEventListener("click", () => openEditModal(t.id));
   }
 }
 
@@ -636,6 +643,171 @@ function renderPie(monthTxs) {
     legend.appendChild(div);
   });
 }
+
+/* ===== edit modal ===== */
+let editingId = null;
+
+function fillEditBudgets() {
+  const to = document.getElementById("eToBudget");
+  const from = document.getElementById("eFromBudget");
+  const to2 = document.getElementById("eToBudget2");
+  if (!to || !from || !to2) return;
+
+  to.innerHTML = ""; from.innerHTML = ""; to2.innerHTML = "";
+  for (const b of state.budgets) {
+    const o1 = document.createElement("option"); o1.value=b; o1.textContent=b;
+    const o2 = document.createElement("option"); o2.value=b; o2.textContent=b;
+    const o3 = document.createElement("option"); o3.value=b; o3.textContent=b;
+    to.appendChild(o1); from.appendChild(o2); to2.appendChild(o3);
+  }
+}
+
+function fillEditCategories() {
+  const sel = document.getElementById("eCategorySelect");
+  if (!sel) return;
+
+  sel.innerHTML = "";
+  const o0 = document.createElement("option");
+  o0.value = ""; o0.textContent = "Alege categoria...";
+  sel.appendChild(o0);
+
+  for (const c of state.categories) {
+    const o = document.createElement("option");
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  }
+}
+
+function openEditModal(txId) {
+  const tx = state.transactions.find(t => t.id === txId);
+  if (!tx) return;
+
+  editingId = txId;
+
+  const modal = document.getElementById("editModal");
+  const msg = document.getElementById("editMsg");
+  msg.className = "msg";
+  msg.textContent = "";
+
+  fillEditBudgets();
+  fillEditCategories();
+
+  document.getElementById("eType").value =
+    tx.type === "income" ? "Venit" : tx.type === "expense" ? "Cheltuială" : "Transfer";
+
+  document.getElementById("eDate").value = tx.dateISO;
+  document.getElementById("eAmount").value = ((tx.amountBani || 0) / 100).toFixed(2).replace(".", ",");
+  document.getElementById("eNote").value = tx.note || "";
+
+  const incomeBlock = document.getElementById("eIncomeBlock");
+  const transferBlock = document.getElementById("eTransferBlock");
+  const expenseBlock = document.getElementById("eExpenseBlock");
+
+  incomeBlock.style.display = "none";
+  transferBlock.style.display = "none";
+  expenseBlock.style.display = "none";
+
+  if (tx.type === "income") {
+    incomeBlock.style.display = "";
+    document.getElementById("eToBudget").value = tx.toBudget || "Nealocat";
+  }
+
+  if (tx.type === "transfer") {
+    transferBlock.style.display = "";
+    document.getElementById("eFromBudget").value = tx.fromBudget || "Economii";
+    document.getElementById("eToBudget2").value = tx.toBudget || "Cheltuieli";
+  }
+
+  if (tx.type === "expense") {
+    expenseBlock.style.display = "";
+    document.getElementById("eCategorySelect").value = tx.category || "";
+    document.getElementById("eCategoryCustom").value = "";
+    document.getElementById("eDesc").value = tx.desc || "";
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function closeEditModal() {
+  editingId = null;
+  document.getElementById("editModal").classList.add("hidden");
+  const msg = document.getElementById("editMsg");
+  msg.className = "msg";
+  msg.textContent = "";
+}
+
+document.getElementById("closeEdit").addEventListener("click", closeEditModal);
+document.getElementById("cancelEdit").addEventListener("click", closeEditModal);
+
+document.getElementById("saveEdit").addEventListener("click", () => {
+  const tx = state.transactions.find(t => t.id === editingId);
+  if (!tx) return;
+
+  const msg = document.getElementById("editMsg");
+  msg.className = "msg";
+  msg.textContent = "";
+
+  const date = document.getElementById("eDate").value || isoToday();
+  const amountBani = toBani(document.getElementById("eAmount").value);
+  const note = (document.getElementById("eNote").value || "").trim();
+
+  if (!amountBani) {
+    msg.classList.add("err");
+    msg.textContent = "Suma este invalidă.";
+    return;
+  }
+
+  tx.dateISO = date;
+  tx.amountBani = amountBani;
+  tx.note = note;
+
+  if (tx.type === "income") {
+    tx.toBudget = document.getElementById("eToBudget").value;
+  }
+
+  if (tx.type === "transfer") {
+    const fb = document.getElementById("eFromBudget").value;
+    const tb = document.getElementById("eToBudget2").value;
+    if (fb === tb) {
+      msg.classList.add("err");
+      msg.textContent = "Transfer invalid: sursa și destinația sunt identice.";
+      return;
+    }
+    tx.fromBudget = fb;
+    tx.toBudget = tb;
+  }
+
+  if (tx.type === "expense") {
+    const custom = (document.getElementById("eCategoryCustom").value || "").trim();
+    const pick = (document.getElementById("eCategorySelect").value || "").trim();
+
+    if (!custom && !pick) {
+      msg.classList.add("err");
+      msg.textContent = "Categoria este obligatorie.";
+      return;
+    }
+    tx.category = ensureCategory(custom || pick);
+
+    const desc = (document.getElementById("eDesc").value || "").trim();
+    if (!desc) {
+      msg.classList.add("err");
+      msg.textContent = "Câmpul „Pentru ce a fost” este obligatoriu.";
+      return;
+    }
+    tx.desc = desc;
+  }
+
+  state.transactions.sort((a,b) => new Date(a.dateISO) - new Date(b.dateISO));
+  saveState();
+
+  msg.classList.add("ok");
+  msg.textContent = "Modificări salvate.";
+
+  renderDashboard();
+  renderTxList();
+
+  setTimeout(closeEditModal, 650);
+});
 
 /* ===== report (print-to-PDF) ===== */
 function buildReportHTML(startISO, endISO) {
