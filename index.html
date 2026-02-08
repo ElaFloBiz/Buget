@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111111" />
+
+  <title>Buget Local</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">Buget Local</div>
+    <div class="subtitle">Date locale • Backup JSON manual • PDF manual</div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="dash">Dashboard</button>
+    <button class="tab" data-tab="add">Adaugă</button>
+    <button class="tab" data-tab="tx">Tranzacții</button>
+    <button class="tab" data-tab="export">Export</button>
+  </nav>
+
+  <main class="container">
+    <!-- DASHBOARD -->
+    <section id="dash" class="panel active">
+      <div class="section">
+        <div class="sectionTitle">Solduri pe bugete (la zi)</div>
+        <div class="cards" id="budgetCards"></div>
+        <div class="hint">Soldurile se calculează din toate tranzacțiile.</div>
+      </div>
+
+      <div class="section">
+        <div class="sectionTitle">Rezumat (luna curentă)</div>
+        <div class="grid2">
+          <div class="stat"><div class="label">Venituri</div><div class="value" id="mIncome">0 RON</div></div>
+          <div class="stat"><div class="label">Cheltuieli</div><div class="value" id="mExpense">0 RON</div></div>
+          <div class="stat"><div class="label">Transferuri</div><div class="value" id="mTransfer">0 RON</div></div>
+          <div class="stat"><div class="label">Net (Venituri − Cheltuieli)</div><div class="value" id="mNet">0 RON</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sectionTitle">Grafic cheltuieli pe categorii (luna curentă)</div>
+        <canvas id="pieCanvas" width="320" height="320" class="pie"></canvas>
+        <div class="list" id="pieLegend"></div>
+      </div>
+
+      <div class="section">
+        <div class="sectionTitle">Top categorii (luna curentă)</div>
+        <div class="list" id="topCats"></div>
+      </div>
+    </section>
+
+    <!-- ADAUGA -->
+    <section id="add" class="panel">
+      <div class="section">
+        <div class="sectionTitle">Adaugă tranzacție</div>
+
+        <div class="formRow">
+          <label>Tip</label>
+          <select id="txType">
+            <option value="income">Venit</option>
+            <option value="expense">Cheltuială</option>
+            <option value="transfer">Transfer</option>
+          </select>
+        </div>
+
+        <div class="formRow">
+          <label>Data</label>
+          <input id="txDate" type="date" />
+        </div>
+
+        <div class="formRow">
+          <label>Sumă (RON)</label>
+          <input id="txAmount" inputmode="decimal" placeholder="ex: 123,45" />
+          <div class="hint">Acceptă „123,45” sau „123.45”.</div>
+        </div>
+
+        <!-- VENIT -->
+        <div class="formRow" id="rowToBudget">
+          <label>Intră în (buget)</label>
+          <select id="toBudget"></select>
+        </div>
+
+        <!-- TRANSFER -->
+        <div class="formRow" id="rowTransferFrom" style="display:none;">
+          <label>Transfer din (buget)</label>
+          <select id="fromBudget"></select>
+        </div>
+
+        <div class="formRow" id="rowTransferTo" style="display:none;">
+          <label>Transfer în (buget)</label>
+          <select id="toBudget2"></select>
+        </div>
+
+        <!-- CHELTUIALA -->
+        <div class="formRow" id="rowExpenseInfo" style="display:none;">
+          <label>Iese din</label>
+          <div class="fixed">Cheltuieli</div>
+        </div>
+
+        <div class="formRow" id="rowCat" style="display:none;">
+          <label>Categorie (obligatoriu)</label>
+          <select id="categorySelect"></select>
+          <input id="categoryCustom" placeholder="sau scrie o categorie nouă" />
+          <div class="hint">Dacă scrii aici, se salvează ca categorie pentru viitor.</div>
+        </div>
+
+        <div class="formRow" id="rowDesc" style="display:none;">
+          <label>Pentru ce a fost (obligatoriu)</label>
+          <input id="txDesc" placeholder="ex: piață, factură curent, meditații etc." />
+        </div>
+
+        <div class="formRow" id="rowNote">
+          <label>Notă (opțional)</label>
+          <input id="txNote" placeholder="ex: numerar, card, detalii" />
+        </div>
+
+        <button class="primary" id="saveTx">Salvează</button>
+        <div class="msg" id="saveMsg"></div>
+      </div>
+
+      <div class="section">
+        <div class="sectionTitle">Categorii rapide</div>
+        <div class="chips" id="catChips"></div>
+      </div>
+    </section>
+
+    <!-- TRANZACTII -->
+    <section id="tx" class="panel">
+      <div class="section">
+        <div class="sectionTitle">Filtru</div>
+        <div class="grid2">
+          <div class="formRow">
+            <label>De la</label>
+            <input id="fStart" type="date" />
+          </div>
+          <div class="formRow">
+            <label>Până la</label>
+            <input id="fEnd" type="date" />
+          </div>
+          <div class="formRow">
+            <label>Tip</label>
+            <select id="fType">
+              <option value="all">Toate</option>
+              <option value="income">Venit</option>
+              <option value="expense">Cheltuială</option>
+              <option value="transfer">Transfer</option>
+            </select>
+          </div>
+          <div class="formRow">
+            <label>Caută</label>
+            <input id="fSearch" placeholder="categorie, descriere, notă" />
+          </div>
+        </div>
+        <button id="applyFilter">Aplică</button>
+      </div>
+
+      <div class="section">
+        <div class="sectionTitle">Tranzacții</div>
+        <div class="list" id="txList"></div>
+      </div>
+    </section>
+
+    <!-- EXPORT -->
+    <section id="export" class="panel">
+      <div class="section">
+        <div class="sectionTitle">Raport pe perioadă</div>
+        <div class="grid2">
+          <div class="formRow">
+            <label>De la</label>
+            <input id="rStart" type="date" />
+          </div>
+          <div class="formRow">
+            <label>Până la</label>
+            <input id="rEnd" type="date" />
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="primary" id="openReport">Deschide raport (pentru PDF)</button>
+          <button id="quickMonth">Luna curentă</button>
+          <button id="quickLastMonth">Luna trecută</button>
+          <button id="quick7">Ultimele 7 zile</button>
+        </div>
+
+        <div class="hint">
+          PDF pe iPhone: după ce se deschide raportul, apasă „Tipărește / Salvează PDF”, apoi Share și îl trimiți unde vrei.
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sectionTitle">Backup (recomandat)</div>
+        <div id="backupReminder" class="warn" style="display:none;"></div>
+
+        <div class="row">
+          <button id="exportJson">Export Backup JSON</button>
+          <label class="fileBtn">
+            Import JSON
+            <input id="importJson" type="file" accept="application/json" />
+          </label>
+        </div>
+
+        <div class="msg" id="backupMsg"></div>
+        <div class="hint">
+          Sugestie: exportă backup-ul și pune-l în Drive. Import îl faci doar când ai nevoie pe alt device.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
