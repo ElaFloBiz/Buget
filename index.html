@@ -214,6 +214,77 @@
     </section>
   </main>
 
+  <!-- EDIT MODAL -->
+  <div id="editModal" class="modal hidden">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <div class="modalTitle">Editează tranzacția</div>
+        <button id="closeEdit" class="iconBtn">✕</button>
+      </div>
+
+      <div class="formRow">
+        <label>Tip (nu se schimbă)</label>
+        <input id="eType" disabled />
+      </div>
+
+      <div class="formRow">
+        <label>Data</label>
+        <input id="eDate" type="date" />
+      </div>
+
+      <div class="formRow">
+        <label>Sumă (RON)</label>
+        <input id="eAmount" inputmode="decimal" />
+      </div>
+
+      <!-- VENIT -->
+      <div id="eIncomeBlock">
+        <div class="formRow">
+          <label>Intră în (buget)</label>
+          <select id="eToBudget"></select>
+        </div>
+      </div>
+
+      <!-- TRANSFER -->
+      <div id="eTransferBlock">
+        <div class="formRow">
+          <label>Transfer din (buget)</label>
+          <select id="eFromBudget"></select>
+        </div>
+        <div class="formRow">
+          <label>Transfer în (buget)</label>
+          <select id="eToBudget2"></select>
+        </div>
+      </div>
+
+      <!-- CHELTUIALĂ -->
+      <div id="eExpenseBlock">
+        <div class="formRow">
+          <label>Categorie</label>
+          <select id="eCategorySelect"></select>
+          <input id="eCategoryCustom" placeholder="sau scrie o categorie nouă" />
+        </div>
+
+        <div class="formRow">
+          <label>Pentru ce a fost</label>
+          <input id="eDesc" />
+        </div>
+      </div>
+
+      <div class="formRow">
+        <label>Notă (opțional)</label>
+        <input id="eNote" />
+      </div>
+
+      <div class="row">
+        <button id="saveEdit" class="primary">Salvează modificările</button>
+        <button id="cancelEdit">Anulează</button>
+      </div>
+
+      <div class="msg" id="editMsg"></div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
