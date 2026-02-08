@@ -117,3 +117,41 @@ button.primary { background: #111; color: #fff; border-color: #111; }
   font-weight: 800;
   opacity: .9;
 }
+
+/* Modal editare */
+.modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  z-index: 999;
+}
+.modal.hidden{ display:none; }
+
+.modalCard{
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+}
+.modalHeader{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.modalTitle{ font-weight: 900; font-size: 16px; }
+.iconBtn{
+  width: auto;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-weight: 900;
+}
