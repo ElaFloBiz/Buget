@@ -1,59 +1,79 @@
 const STORAGE_KEY = "buget_local_v3";
 
 const DEFAULT_STATE = {
-  budgets: ["Nealocat", "Cheltuieli", "Economii"],
-  categories: ["Meditații/Educație", "Transport", "Facturi", "Piață", "Sănătate", "Bancă", "Cadouri", "Altele"],
+  // Ordine coloane SOLDURI: NEALOCAT, ECONOMII, CHELTUIELI
+  budgets: ["Nealocat", "Economii", "Cheltuieli"],
+  categories: ["Educație", "Transport", "Facturi", "Mâncare", "Piață", "Sănătate", "Bancă", "Cadouri", "Altele"],
   transactions: [],
   lastBackupISO: null
 };
 
 let state = loadState();
 
+/* ===== util afișare ===== */
+function dispBudget(b) { return (b || "").toUpperCase(); }
+
 /* ===== storage + migrare ===== */
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    let s;
-    if (!raw) {
-      s = structuredClone(DEFAULT_STATE);
-    } else {
-      s = JSON.parse(raw);
-    }
+    let s = raw ? JSON.parse(raw) : structuredClone(DEFAULT_STATE);
 
-    // forțăm bugetele corecte (fără "Bancă")
     s.budgets = structuredClone(DEFAULT_STATE.budgets);
     s.categories ??= structuredClone(DEFAULT_STATE.categories);
     s.transactions ??= [];
     s.lastBackupISO ??= null;
 
-    // migrare tranzacții vechi
-    const validBudgets = new Set(s.budgets);
+    // migrare categorii preferate
+    const mapCat = {
+      "Meditații/Educație": "Educație",
+      "Meditații/educație": "Educație",
+      "Mâncare gătită": "Mâncare",
+      "Mancare gatita": "Mâncare"
+    };
+
     let seq = 1;
+    const validBudgets = new Set(s.budgets);
 
     for (const t of s.transactions) {
-      // pentru ordine stabilă în aceeași zi
       t.createdAt ??= seq++;
 
       if (t.type === "income") {
         if (!validBudgets.has(t.toBudget)) t.toBudget = "Nealocat";
+        t.fromBudget ??= "";
+        t.category ??= "";
+        t.desc ??= "";
       }
 
       if (t.type === "transfer") {
         if (!validBudgets.has(t.fromBudget)) t.fromBudget = "Economii";
         if (!validBudgets.has(t.toBudget)) t.toBudget = "Cheltuieli";
         if (t.fromBudget === t.toBudget) t.toBudget = (t.fromBudget === "Economii") ? "Cheltuieli" : "Economii";
+        t.category ??= "";
+        t.desc ??= "";
       }
 
       if (t.type === "expense") {
-        t.category = (t.category || "").trim() || "Altele";
-        t.desc = (t.desc || "").trim() || "—";
         t.fromBudget = "Cheltuieli";
         t.toBudget = "";
+
+        const old = (t.category || "").trim();
+        const mapped = mapCat[old] || old;
+        t.category = mapped || "Altele";
+
+        t.desc = (t.desc || "").trim() || "–";
       }
     }
 
-    // asigurăm categoria "Bancă"
-    if (!s.categories.includes("Bancă")) s.categories.push("Bancă");
+    // migrare listă categorii
+    s.categories = (s.categories || [])
+      .map(c => mapCat[(c || "").trim()] || (c || "").trim())
+      .filter(Boolean);
+
+    // asigură categoriile default
+    for (const c of DEFAULT_STATE.categories) if (!s.categories.includes(c)) s.categories.push(c);
+
+    // dedup + sort
     s.categories = Array.from(new Set(s.categories)).sort((a,b)=>a.localeCompare(b,"ro"));
 
     return s;
@@ -138,7 +158,6 @@ function stableSortedTxs() {
     return (a.createdAt || 0) - (b.createdAt || 0);
   });
 }
-
 /* ===== calcule ===== */
 function applyTxToBalancesObj(bal, tx) {
   if (tx.type === "income") {
@@ -188,14 +207,13 @@ function ensureCategory(cat) {
   return c;
 }
 
-/* ===== solduri după tranzacție, pe interval ===== */
+/* ===== solduri după tranzacție (interval) ===== */
 function snapshotBalancesMapForRange(fromDate, toDate) {
   const sorted = stableSortedTxs();
   const bal = {};
   state.budgets.forEach(b => bal[b] = 0);
 
-  const map = {}; // tx.id -> snapshot
-
+  const map = {};
   for (const tx of sorted) {
     const d = new Date(tx.dateISO);
 
@@ -211,13 +229,13 @@ function snapshotBalancesMapForRange(fromDate, toDate) {
   return map;
 }
 
-function balancesLineFromSnapshot(snapshot) {
+function balancesAllLine(snapshot) {
   if (!snapshot) return "";
-  const parts = state.budgets.map(b => `${b}: ${baniToRON(snapshot[b] || 0)}`);
-  return `Solduri după: ${parts.join(" • ")}`;
+  const parts = state.budgets.map(b => `${dispBudget(b)}: ${baniToRON(snapshot[b] || 0)}`);
+  return parts.join(" • ");
 }
 
-/* ===== backup reminder ===== */
+/* ===== reminder backup ===== */
 function daysBetween(isoA, isoB) {
   const a = startOfDay(new Date(isoA));
   const b = startOfDay(new Date(isoB));
@@ -277,9 +295,9 @@ function fillBudgets() {
 
   to.innerHTML = ""; from.innerHTML = ""; to2.innerHTML = "";
   for (const b of state.budgets) {
-    const o1 = document.createElement("option"); o1.value=b; o1.textContent=b;
-    const o2 = document.createElement("option"); o2.value=b; o2.textContent=b;
-    const o3 = document.createElement("option"); o3.value=b; o3.textContent=b;
+    const o1 = document.createElement("option"); o1.value=b; o1.textContent=dispBudget(b);
+    const o2 = document.createElement("option"); o2.value=b; o2.textContent=dispBudget(b);
+    const o3 = document.createElement("option"); o3.value=b; o3.textContent=dispBudget(b);
     to.appendChild(o1); from.appendChild(o2); to2.appendChild(o3);
   }
   to.value = "Nealocat";
@@ -289,17 +307,32 @@ function fillBudgets() {
 
 function fillCategories() {
   const sel = document.getElementById("categorySelect");
-  sel.innerHTML = "";
-  const o0 = document.createElement("option");
-  o0.value = ""; o0.textContent = "Alege categoria...";
-  sel.appendChild(o0);
-  for (const c of state.categories) {
-    const o = document.createElement("option");
-    o.value=c; o.textContent=c;
-    sel.appendChild(o);
+  const esel = document.getElementById("eCategorySelect");
+
+  if (sel) {
+    sel.innerHTML = "";
+    const o0 = document.createElement("option");
+    o0.value = ""; o0.textContent = "Alege categoria...";
+    sel.appendChild(o0);
+    for (const c of state.categories) {
+      const o = document.createElement("option");
+      o.value=c; o.textContent=c;
+      sel.appendChild(o);
+    }
+  }
+
+  if (esel) {
+    esel.innerHTML = "";
+    const o0 = document.createElement("option");
+    o0.value = ""; o0.textContent = "Alege categoria...";
+    esel.appendChild(o0);
+    for (const c of state.categories) {
+      const o = document.createElement("option");
+      o.value=c; o.textContent=c;
+      esel.appendChild(o);
+    }
   }
 }
-
 /* ===== type UI ===== */
 function setTypeUI(type) {
   const rowTo = document.getElementById("rowToBudget");
@@ -335,10 +368,7 @@ function setTypeUI(type) {
     rowDesc.style.display = "none";
   }
 }
-
-document.getElementById("txType").addEventListener("change", (e) => {
-  setTypeUI(e.target.value);
-});
+document.getElementById("txType").addEventListener("change", (e) => setTypeUI(e.target.value));
 
 /* ===== add tx ===== */
 document.getElementById("saveTx").addEventListener("click", () => {
@@ -420,6 +450,7 @@ document.getElementById("saveTx").addEventListener("click", () => {
 
   renderDashboard();
   renderTxList();
+  renderCategoryManager();
 });
 
 /* ===== filter ===== */
@@ -432,14 +463,12 @@ document.getElementById("quickMonth").addEventListener("click", () => {
   const lastDay = new Date(r.end.getFullYear(), r.end.getMonth(), r.end.getDate() - 1);
   document.getElementById("rEnd").value = lastDay.toISOString().slice(0,10);
 });
-
 document.getElementById("quickLastMonth").addEventListener("click", () => {
   const r = lastMonthRange(new Date());
   document.getElementById("rStart").value = r.start.toISOString().slice(0,10);
   const lastDay = new Date(r.end.getFullYear(), r.end.getMonth(), r.end.getDate() - 1);
   document.getElementById("rEnd").value = lastDay.toISOString().slice(0,10);
 });
-
 document.getElementById("quick7").addEventListener("click", () => {
   const end = new Date();
   const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 6);
@@ -474,6 +503,7 @@ document.getElementById("exportJson").addEventListener("click", () => {
   a.download = "buget-backup.json";
   a.click();
   URL.revokeObjectURL(url);
+
   setBackupMsg("Backup JSON exportat. Data backup-ului a fost salvată.", true);
 });
 
@@ -492,7 +522,7 @@ document.getElementById("importJson").addEventListener("change", async (e) => {
 
     updateBackupReminder();
     setBackupMsg("Backup importat. Datele au fost încărcate.", true);
-    renderDashboard(); renderAdd(); renderTxList();
+    renderDashboard(); renderAdd(); renderTxList(); renderCategoryManager();
   } catch (err) {
     setBackupMsg("Import eșuat: " + err.message, false);
   }
@@ -514,7 +544,7 @@ function renderDashboard() {
     const d = document.createElement("div");
     d.className = "card";
     d.innerHTML = `
-      <div class="name">${escapeHtml(b)}</div>
+      <div class="name">${escapeHtml(dispBudget(b))}</div>
       <div class="bal">${baniToRON(bal[b] || 0)}</div>
       <div class="mini">Sold calculat din tranzacții</div>
     `;
@@ -523,15 +553,15 @@ function renderDashboard() {
 
   const mr = monthRange(new Date());
   const monthTxs = state.transactions.filter(t => {
-    const d = new Date(t.dateISO);
-    return d >= mr.start && d < mr.end;
+    const dd = new Date(t.dateISO);
+    return dd >= mr.start && dd < mr.end;
   });
 
-  const t = totalsFor(monthTxs);
-  document.getElementById("mIncome").textContent = baniToRON(t.inc);
-  document.getElementById("mExpense").textContent = baniToRON(t.exp);
-  document.getElementById("mTransfer").textContent = baniToRON(t.tr);
-  document.getElementById("mNet").textContent = baniToRON(t.net);
+  const tt = totalsFor(monthTxs);
+  document.getElementById("mIncome").textContent = baniToRON(tt.inc);
+  document.getElementById("mExpense").textContent = baniToRON(tt.exp);
+  document.getElementById("mTransfer").textContent = baniToRON(tt.tr);
+  document.getElementById("mNet").textContent = baniToRON(tt.net);
 
   renderPie(monthTxs);
   renderTopCats(monthTxs);
@@ -563,6 +593,7 @@ function renderAdd() {
   fillCategories();
   setTypeUI(document.getElementById("txType").value);
   renderCatChips();
+  renderCategoryManager();
 }
 
 function renderCatChips() {
@@ -571,6 +602,7 @@ function renderCatChips() {
   for (const c of state.categories.slice(0, 14)) {
     const b = document.createElement("button");
     b.className = "chip";
+    b.type = "button";
     b.textContent = c;
     b.addEventListener("click", () => {
       document.getElementById("txType").value = "expense";
@@ -582,8 +614,99 @@ function renderCatChips() {
     wrap.appendChild(b);
   }
 }
+/* ===== gestionare categorii ===== */
+function renderCategoryManager() {
+  const list = document.getElementById("catManageList");
+  const msg = document.getElementById("catManageMsg");
+  if (!list || !msg) return;
 
-/* ===== tranzacții (cu solduri după fiecare) ===== */
+  list.innerHTML = "";
+  msg.className = "msg";
+  msg.textContent = "";
+
+  state.categories.forEach((cat, idx) => {
+    const row = document.createElement("div");
+    row.className = "item";
+
+    const inputId = `rename_${idx}`;
+    const btnId = `btn_${idx}`;
+
+    row.innerHTML = `
+      <div class="itemTop">
+        <div><strong>${escapeHtml(cat)}</strong></div>
+        <div class="small">Redenumește</div>
+      </div>
+      <div class="row">
+        <input id="${inputId}" placeholder="Nume nou pentru categorie" />
+        <button id="${btnId}" type="button">Salvează</button>
+      </div>
+    `;
+
+    list.appendChild(row);
+
+    row.querySelector(`#${btnId}`).addEventListener("click", () => {
+      const newName = (row.querySelector(`#${inputId}`).value || "").trim();
+      const res = renameCategory(cat, newName);
+
+      msg.className = "msg " + (res.ok ? "ok" : "err");
+      msg.textContent = res.message;
+
+      if (res.ok) {
+        renderAdd();
+        renderDashboard();
+        renderTxList();
+      }
+    });
+  });
+}
+
+document.getElementById("addCatBtn").addEventListener("click", () => {
+  const msg = document.getElementById("catManageMsg");
+  const val = (document.getElementById("newCatName").value || "").trim();
+
+  msg.className = "msg";
+  msg.textContent = "";
+
+  if (!val) {
+    msg.classList.add("err");
+    msg.textContent = "Scrie un nume de categorie.";
+    return;
+  }
+
+  ensureCategory(val);
+  saveState();
+
+  document.getElementById("newCatName").value = "";
+  msg.classList.add("ok");
+  msg.textContent = "Categorie adăugată.";
+
+  renderAdd();
+  renderDashboard();
+});
+
+function renameCategory(oldName, newName) {
+  const oldN = (oldName || "").trim();
+  const newN = (newName || "").trim();
+
+  if (!oldN) return { ok:false, message:"Categorie veche invalidă." };
+  if (!newN) return { ok:false, message:"Numele nou nu poate fi gol." };
+  if (oldN === newN) return { ok:true, message:"Nimic de schimbat." };
+
+  const exists = state.categories.includes(newN);
+
+  for (const t of state.transactions) {
+    if (t.type === "expense" && (t.category || "") === oldN) t.category = newN;
+  }
+
+  state.categories = state.categories.filter(c => c !== oldN);
+  if (!exists) state.categories.push(newN);
+  state.categories = Array.from(new Set(state.categories)).sort((a,b)=>a.localeCompare(b,"ro"));
+
+  saveState();
+  return { ok:true, message:`Categoria „${oldN}” a fost redenumită în „${newN}”.` };
+}
+
+/* ===== tranzacții (solduri la fiecare tranzacție) ===== */
 function renderTxList() {
   const startISO = document.getElementById("fStart").value || isoToday();
   const endISO = document.getElementById("fEnd").value || isoToday();
@@ -617,16 +740,16 @@ function renderTxList() {
 
     const label = t.type === "income" ? "Venit" : t.type === "expense" ? "Cheltuială" : "Transfer";
     const flow =
-      t.type === "income" ? `În: ${t.toBudget}` :
-      t.type === "expense" ? `Din: Cheltuieli` :
-      `${t.fromBudget} -> ${t.toBudget}`;
+      t.type === "income" ? `În: ${dispBudget(t.toBudget)}` :
+      t.type === "expense" ? `Din: CHELTUIELI` :
+      `${dispBudget(t.fromBudget)} -> ${dispBudget(t.toBudget)}`;
 
     const main =
       t.type === "expense"
         ? `<strong>${escapeHtml(t.category)}</strong> • ${escapeHtml(t.desc)}`
         : `<span class="small">${escapeHtml(t.note || "–")}</span>`;
 
-    const balancesLine = balancesLineFromSnapshot(snapMap[t.id]);
+    const balancesLine = balancesAllLine(snapMap[t.id]);
 
     it.innerHTML = `
       <div class="itemTop">
@@ -634,18 +757,22 @@ function renderTxList() {
           <span class="badge">${label}</span>
           <span class="small">${fmtDate(t.dateISO)}</span>
         </div>
-        <div class="badge">${baniToRON(t.amountBani)}</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <div class="badge">${baniToRON(t.amountBani)}</div>
+          <button class="chip editBtn" type="button" style="padding:6px 10px;" data-id="${t.id}">Editează</button>
+        </div>
       </div>
       <div class="small">${escapeHtml(flow)}</div>
       <div class="small">${main}</div>
-      ${balancesLine ? `<div class="small">${escapeHtml(balancesLine)}</div>` : ``}
+      ${balancesLine ? `<div class="small"><strong>Solduri:</strong> ${escapeHtml(balancesLine)}</div>` : ``}
     `;
 
     list.appendChild(it);
+    it.querySelector(".editBtn").addEventListener("click", () => openEditModal(t.id));
   }
 }
 
-/* ===== pie ===== */
+/* ===== pie + legendă cu SVG (tipăribil) ===== */
 function colorForIndex(i, n) {
   const hue = Math.round((i * 360) / Math.max(n, 1));
   return `hsl(${hue} 70% 55%)`;
@@ -733,7 +860,9 @@ function renderPie(monthTxs) {
     div.innerHTML = `
       <div class="itemTop">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="width:12px;height:12px;border-radius:3px;background:${p.color};display:inline-block;"></span>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style="flex:0 0 auto;">
+            <rect x="0" y="0" width="12" height="12" rx="2" ry="2" fill="${p.color}"></rect>
+          </svg>
           <strong>${escapeHtml(p.name)}</strong>
         </div>
         <div class="badge">${baniToRON(p.value)}</div>
@@ -743,11 +872,163 @@ function renderPie(monthTxs) {
   });
 }
 
-/* ===== raport (print-to-PDF) ===== */
+/* ===== edit modal ===== */
+let editingId = null;
+
+function fillEditBudgets() {
+  const to = document.getElementById("eToBudget");
+  const from = document.getElementById("eFromBudget");
+  const to2 = document.getElementById("eToBudget2");
+
+  to.innerHTML = ""; from.innerHTML = ""; to2.innerHTML = "";
+  for (const b of state.budgets) {
+    const o1 = document.createElement("option"); o1.value=b; o1.textContent=dispBudget(b);
+    const o2 = document.createElement("option"); o2.value=b; o2.textContent=dispBudget(b);
+    const o3 = document.createElement("option"); o3.value=b; o3.textContent=dispBudget(b);
+    to.appendChild(o1); from.appendChild(o2); to2.appendChild(o3);
+  }
+}
+
+function openEditModal(txId) {
+  const tx = state.transactions.find(t => t.id === txId);
+  if (!tx) return;
+
+  editingId = txId;
+
+  const modal = document.getElementById("editModal");
+  const msg = document.getElementById("editMsg");
+  msg.className = "msg";
+  msg.textContent = "";
+
+  fillEditBudgets();
+  fillCategories();
+
+  document.getElementById("eType").value =
+    tx.type === "income" ? "Venit" : tx.type === "expense" ? "Cheltuială" : "Transfer";
+
+  document.getElementById("eDate").value = tx.dateISO;
+  document.getElementById("eAmount").value = ((tx.amountBani || 0) / 100).toFixed(2).replace(".", ",");
+  document.getElementById("eNote").value = tx.note || "";
+
+  const incomeBlock = document.getElementById("eIncomeBlock");
+  const transferBlock = document.getElementById("eTransferBlock");
+  const expenseBlock = document.getElementById("eExpenseBlock");
+
+  incomeBlock.style.display = "none";
+  transferBlock.style.display = "none";
+  expenseBlock.style.display = "none";
+
+  if (tx.type === "income") {
+    incomeBlock.style.display = "";
+    document.getElementById("eToBudget").value = tx.toBudget || "Nealocat";
+  }
+  if (tx.type === "transfer") {
+    transferBlock.style.display = "";
+    document.getElementById("eFromBudget").value = tx.fromBudget || "Economii";
+    document.getElementById("eToBudget2").value = tx.toBudget || "Cheltuieli";
+  }
+  if (tx.type === "expense") {
+    expenseBlock.style.display = "";
+    document.getElementById("eCategorySelect").value = tx.category || "";
+    document.getElementById("eCategoryCustom").value = "";
+    document.getElementById("eDesc").value = tx.desc || "";
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function closeEditModal() {
+  editingId = null;
+  document.getElementById("editModal").classList.add("hidden");
+  const msg = document.getElementById("editMsg");
+  msg.className = "msg";
+  msg.textContent = "";
+}
+
+document.getElementById("closeEdit").addEventListener("click", closeEditModal);
+document.getElementById("cancelEdit").addEventListener("click", closeEditModal);
+
+document.getElementById("saveEdit").addEventListener("click", () => {
+  const tx = state.transactions.find(t => t.id === editingId);
+  if (!tx) return;
+
+  const msg = document.getElementById("editMsg");
+  msg.className = "msg";
+  msg.textContent = "";
+
+  const date = document.getElementById("eDate").value || isoToday();
+  const amountBani = toBani(document.getElementById("eAmount").value);
+  const note = (document.getElementById("eNote").value || "").trim();
+
+  if (!amountBani) {
+    msg.classList.add("err");
+    msg.textContent = "Suma este invalidă.";
+    return;
+  }
+
+  tx.dateISO = date;
+  tx.amountBani = amountBani;
+  tx.note = note;
+
+  if (tx.type === "income") {
+    tx.toBudget = document.getElementById("eToBudget").value;
+  }
+
+  if (tx.type === "transfer") {
+    const fb = document.getElementById("eFromBudget").value;
+    const tb = document.getElementById("eToBudget2").value;
+    if (fb === tb) {
+      msg.classList.add("err");
+      msg.textContent = "Transfer invalid: sursa și destinația sunt identice.";
+      return;
+    }
+    tx.fromBudget = fb;
+    tx.toBudget = tb;
+  }
+
+  if (tx.type === "expense") {
+    const custom = (document.getElementById("eCategoryCustom").value || "").trim();
+    const pick = (document.getElementById("eCategorySelect").value || "").trim();
+    if (!custom && !pick) {
+      msg.classList.add("err");
+      msg.textContent = "Categoria este obligatorie.";
+      return;
+    }
+    tx.category = ensureCategory(custom || pick);
+
+    const desc = (document.getElementById("eDesc").value || "").trim();
+    if (!desc) {
+      msg.classList.add("err");
+      msg.textContent = "Câmpul „Pentru ce a fost” este obligatoriu.";
+      return;
+    }
+    tx.desc = desc;
+  }
+
+  state.transactions.sort((a,b) => {
+    const da = new Date(a.dateISO).getTime();
+    const db = new Date(b.dateISO).getTime();
+    if (da !== db) return da - db;
+    return (a.createdAt || 0) - (b.createdAt || 0);
+  });
+  saveState();
+
+  msg.classList.add("ok");
+  msg.textContent = "Modificări salvate.";
+
+  renderDashboard();
+  renderTxList();
+  renderAdd();
+  renderCategoryManager();
+
+  setTimeout(closeEditModal, 650);
+});
+
+/* ===== raport (print-to-PDF) cu SOLDURI în 3 coloane ===== */
 function buildReportHTML(startISO, endISO) {
   const { from, to } = normalizedRange(startISO, endISO);
   const txs = state.transactions.filter(t => inRange(t.dateISO, from, to));
-  const t = totalsFor(txs);
+  const tt = totalsFor(txs);
   const balAll = computeBalances(state.transactions);
   const snapMap = snapshotBalancesMapForRange(from, to);
 
@@ -767,21 +1048,41 @@ function buildReportHTML(startISO, endISO) {
   }
   finalPairs = finalPairs.map((p, i) => ({ ...p, color: colorForIndex(i, finalPairs.length) }));
 
-  const budgetsRows = state.budgets.map(b => `
-    <tr><td>${escapeHtml(b)}</td><td class="right">${baniToRON(balAll[b] || 0)}</td></tr>
-  `).join("");
+  function budgetClass(b) {
+    if (b === "Nealocat") return "b-nealocat";
+    if (b === "Economii") return "b-economii";
+    return "b-cheltuieli";
+  }
+
+  const budgetsRows = state.budgets.map(b => {
+    const cls = budgetClass(b);
+    return `<tr>
+      <td class="${cls}">${escapeHtml(dispBudget(b))}</td>
+      <td class="right ${cls}">${baniToRON(balAll[b] || 0)}</td>
+    </tr>`;
+  }).join("");
 
   const catsRows = (catPairs.length ? catPairs : [["–",0]]).map(([name, bani]) => `
     <tr><td>${escapeHtml(name)}</td><td class="right">${baniToRON(bani)}</td></tr>
   `).join("");
 
+  const budgetHead = state.budgets.map(b => {
+    const cls = budgetClass(b);
+    return `<th class="right ${cls}">${escapeHtml(dispBudget(b))}</th>`;
+  }).join("");
+
   const txRows = rows.map(x => {
     const label = x.type === "income" ? "Venit" : x.type === "expense" ? "Cheltuială" : "Transfer";
     const cat = x.type === "expense" ? x.category : "–";
-    const fromB = x.type === "income" ? "–" : (x.type === "expense" ? "Cheltuieli" : x.fromBudget);
-    const toB = x.type === "expense" ? "–" : (x.type === "income" ? x.toBudget : x.toBudget);
+    const fromB = x.type === "income" ? "–" : (x.type === "expense" ? "CHELTUIELI" : dispBudget(x.fromBudget));
+    const toB = x.type === "expense" ? "–" : (x.type === "income" ? dispBudget(x.toBudget) : dispBudget(x.toBudget));
     const details = x.type === "expense" ? x.desc : (x.note || "–");
-    const balLine = balancesLineFromSnapshot(snapMap[x.id]);
+
+    const snap = snapMap[x.id] || {};
+    const budgetCells = state.budgets.map(b => {
+      const cls = budgetClass(b);
+      return `<td class="right ${cls}">${baniToRON(snap[b] || 0)}</td>`;
+    }).join("");
 
     return `
       <tr>
@@ -792,7 +1093,7 @@ function buildReportHTML(startISO, endISO) {
         <td>${escapeHtml(toB)}</td>
         <td class="right">${baniToRON(x.amountBani)}</td>
         <td>${escapeHtml(details)}</td>
-        <td>${escapeHtml(balLine || "")}</td>
+        ${budgetCells}
       </tr>
     `;
   }).join("");
@@ -807,21 +1108,29 @@ function buildReportHTML(startISO, endISO) {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Raport buget</title>
 <style>
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: -apple-system, system-ui, Arial; margin: 24px; color: #111; }
   h1 { margin: 0 0 6px; }
   .muted { color: #555; font-size: 12px; }
+
   .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
   .box { border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
   .label { font-size: 12px; color: #666; }
   .val { font-weight: 900; font-size: 16px; margin-top: 6px; }
+
   table { width: 100%; border-collapse: collapse; margin-top: 10px; }
   th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; font-size: 12px; }
   th { background: #f3f3f3; text-align: left; }
   .right { text-align: right; white-space: nowrap; }
+
   .btn { margin: 14px 0; padding: 10px 12px; border: 1px solid #111; border-radius: 10px; background: #111; color:#fff; font-weight: 900; }
   canvas { display:block; margin: 10px 0 6px; border:1px solid #ddd; border-radius: 12px; }
   .legendItem { font-size: 12px; margin: 4px 0; display:flex; align-items:center; gap:8px; }
-  .dot { width:12px; height:12px; border-radius:3px; display:inline-block; }
+
+  .b-nealocat { color: #0b5fff; font-weight: 900; }
+  .b-economii { color: #0a7a2f; font-weight: 900; }
+  .b-cheltuieli { color: #111; font-weight: 900; }
+
   @media print { .btn { display:none; } body { margin: 0.6in; } }
 </style>
 </head>
@@ -832,10 +1141,10 @@ function buildReportHTML(startISO, endISO) {
   <button class="btn" onclick="window.print()">Tipărește / Salvează PDF</button>
 
   <div class="grid">
-    <div class="box"><div class="label">Venituri</div><div class="val">${baniToRON(t.inc)}</div></div>
-    <div class="box"><div class="label">Cheltuieli</div><div class="val">${baniToRON(t.exp)}</div></div>
-    <div class="box"><div class="label">Transferuri</div><div class="val">${baniToRON(t.tr)}</div></div>
-    <div class="box"><div class="label">Net (Venituri - Cheltuieli)</div><div class="val">${baniToRON(t.net)}</div></div>
+    <div class="box"><div class="label">Venituri</div><div class="val">${baniToRON(tt.inc)}</div></div>
+    <div class="box"><div class="label">Cheltuieli</div><div class="val">${baniToRON(tt.exp)}</div></div>
+    <div class="box"><div class="label">Transferuri</div><div class="val">${baniToRON(tt.tr)}</div></div>
+    <div class="box"><div class="label">Net (Venituri - Cheltuieli)</div><div class="val">${baniToRON(tt.net)}</div></div>
   </div>
 
   <h2>Cheltuieli pe categorii (grafic)</h2>
@@ -856,11 +1165,24 @@ function buildReportHTML(startISO, endISO) {
 
   <h2>Toate mișcările (în perioada aleasă)</h2>
   <table>
-    <tr>
-      <th>Data</th><th>Tip</th><th>Categorie</th><th>Din</th><th>În</th>
-      <th class="right">Sumă</th><th>Detalii</th><th>Solduri după</th>
-    </tr>
-    ${txRows || ""}
+    <thead>
+      <tr>
+        <th rowspan="2">Data</th>
+        <th rowspan="2">Tip</th>
+        <th rowspan="2">Categorie</th>
+        <th rowspan="2">Din</th>
+        <th rowspan="2">În</th>
+        <th rowspan="2" class="right">Sumă</th>
+        <th rowspan="2">Detalii</th>
+        <th colspan="${state.budgets.length}" class="right">SOLDURI</th>
+      </tr>
+      <tr>
+        ${budgetHead}
+      </tr>
+    </thead>
+    <tbody>
+      ${txRows || ""}
+    </tbody>
   </table>
 
 <script>
@@ -894,11 +1216,16 @@ function buildReportHTML(startISO, endISO) {
     ctx.fillText(baniToRON(total),cx,cy+16);
   }
   drawPie(document.getElementById("pie"), data);
+
   const legend=document.getElementById("legend");
   if(data.length){
     legend.innerHTML = data.map(p=>\`
-      <div class="legendItem"><span class="dot" style="background:\${p.color}"></span>
-      <strong>\${p.name}</strong> • \${baniToRON(p.value)}</div>\`).join("");
+      <div class="legendItem">
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <rect x="0" y="0" width="12" height="12" rx="2" ry="2" fill="\${p.color}"></rect>
+        </svg>
+        <strong>\${p.name}</strong> • \${baniToRON(p.value)}
+      </div>\`).join("");
   }
 </script>
 </body>
@@ -912,6 +1239,7 @@ setTypeUI(document.getElementById("txType").value);
 renderDashboard();
 renderAdd();
 renderTxList();
+renderCategoryManager();
 updateBackupReminder();
 
 /* ===== service worker ===== */
