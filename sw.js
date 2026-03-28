@@ -1,4 +1,4 @@
-const CACHE = "buget-local-v5";
+const CACHE = "buget-local-v6";
 const ASSETS = ["./", "index.html", "styles.css", "app.js", "manifest.json", "sw.js"];
 
 self.addEventListener("install", (e) => {
