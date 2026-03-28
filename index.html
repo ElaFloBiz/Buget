@@ -121,7 +121,7 @@
           <input id="txNote" placeholder="ex: numerar, card, detalii" />
         </div>
 
-        <button class="primary" id="saveTx">Salvează</button>
+        <button class="primary" id="saveTx" type="button">Salvează</button>
         <div class="msg" id="saveMsg"></div>
       </div>
 
@@ -132,7 +132,7 @@
 
       <div class="section">
         <div class="sectionTitle">Gestionează categorii</div>
-        <div class="hint">Poți redenumi o categorie. Se actualizează automat în toate cheltuielile existente.</div>
+        <div class="hint">Poți redenumi sau șterge o categorie. La ștergere, alegi unde se mută cheltuielile existente.</div>
 
         <div class="formRow">
           <label>Adaugă categorie nouă</label>
@@ -293,7 +293,8 @@
       </div>
 
       <div class="row">
-        <button id="saveEdit" class="primary" type="button">Salvează modificările</button>
+        <button id="saveEdit" class="primary" type="button">Salvează</button>
+        <button id="deleteEdit" class="danger" type="button">Șterge</button>
         <button id="cancelEdit" type="button">Anulează</button>
       </div>
 
