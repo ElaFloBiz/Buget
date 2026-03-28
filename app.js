@@ -1055,8 +1055,10 @@ function buildReportHTML(startISO, endISO) {
       return `<td class="right ${cls}">${baniToRON(snap[b] || 0)}</td>`;
     }).join("");
 
+    const rowClass = (x.type === "income" || x.type === "transfer") ? "tx-red" : "";
+
     return `
-      <tr>
+      <tr class="${rowClass}">
         <td>${fmtDate(x.dateISO)}</td><td>${label}</td><td>${escapeHtml(cat)}</td><td>${escapeHtml(fromB)}</td><td>${escapeHtml(toB)}</td>
         <td class="right">${baniToRON(x.amountBani)}</td><td>${escapeHtml(details)}</td>${budgetCells}
       </tr>
@@ -1083,6 +1085,10 @@ canvas{ display:block; margin:10px 0 6px; border:1px solid #ddd; border-radius:1
 .b-cheltuieli{ color:#111; font-weight:900; }
 .b-economii{ color:#0a7a2f; font-weight:900; }
 .b-venit{ color:#0b5fff; font-weight:900; }
+
+/* ROSU doar pe primele 7 coloane (Data, Tip, Categorie, Din, În, Sumă, Detalii) */
+.tx-red td:nth-child(-n+7){ color:#b00020; font-weight:900; }
+
 @media print{ .btn{ display:none; } body{ margin:0.6in; } }
 </style></head><body>
 <h1>Raport buget</h1>
