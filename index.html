@@ -101,7 +101,7 @@
         <!-- CHELTUIALĂ -->
         <div class="formRow" id="rowExpenseInfo" style="display:none;">
           <label>Iese din</label>
-          <div class="fixed">Cheltuieli</div>
+          <div class="fixed">CHELTUIELI</div>
         </div>
 
         <div class="formRow" id="rowCat" style="display:none;">
@@ -113,7 +113,7 @@
 
         <div class="formRow" id="rowDesc" style="display:none;">
           <label>Pentru ce a fost (obligatoriu)</label>
-          <input id="txDesc" placeholder="ex: piață, factură curent, meditații etc." />
+          <input id="txDesc" placeholder="ex: piață, factură, educație etc." />
         </div>
 
         <div class="formRow" id="rowNote">
@@ -128,6 +128,22 @@
       <div class="section">
         <div class="sectionTitle">Categorii rapide</div>
         <div class="chips" id="catChips"></div>
+      </div>
+
+      <div class="section">
+        <div class="sectionTitle">Gestionează categorii</div>
+        <div class="hint">Poți redenumi o categorie. Se actualizează automat în toate cheltuielile existente.</div>
+
+        <div class="formRow">
+          <label>Adaugă categorie nouă</label>
+          <div class="row">
+            <input id="newCatName" placeholder="ex: Îmbrăcăminte" />
+            <button id="addCatBtn" type="button">Adaugă</button>
+          </div>
+        </div>
+
+        <div class="list" id="catManageList"></div>
+        <div class="msg" id="catManageMsg"></div>
       </div>
     </section>
 
@@ -158,7 +174,7 @@
             <input id="fSearch" placeholder="categorie, descriere, notă" />
           </div>
         </div>
-        <button id="applyFilter">Aplică</button>
+        <button id="applyFilter" type="button">Aplică</button>
       </div>
 
       <div class="section">
@@ -183,10 +199,10 @@
         </div>
 
         <div class="row">
-          <button class="primary" id="openReport">Deschide raport (pentru PDF)</button>
-          <button id="quickMonth">Luna curentă</button>
-          <button id="quickLastMonth">Luna trecută</button>
-          <button id="quick7">Ultimele 7 zile</button>
+          <button class="primary" id="openReport" type="button">Deschide raport (pentru PDF)</button>
+          <button id="quickMonth" type="button">Luna curentă</button>
+          <button id="quickLastMonth" type="button">Luna trecută</button>
+          <button id="quick7" type="button">Ultimele 7 zile</button>
         </div>
 
         <div class="hint">
@@ -199,7 +215,7 @@
         <div id="backupReminder" class="warn" style="display:none;"></div>
 
         <div class="row">
-          <button id="exportJson">Export Backup JSON</button>
+          <button id="exportJson" type="button">Export Backup JSON</button>
           <label class="fileBtn">
             Import JSON
             <input id="importJson" type="file" accept="application/json" />
@@ -219,7 +235,7 @@
     <div class="modalCard">
       <div class="modalHeader">
         <div class="modalTitle">Editează tranzacția</div>
-        <button id="closeEdit" class="iconBtn">✕</button>
+        <button id="closeEdit" class="iconBtn" type="button">✕</button>
       </div>
 
       <div class="formRow">
@@ -277,8 +293,8 @@
       </div>
 
       <div class="row">
-        <button id="saveEdit" class="primary">Salvează modificările</button>
-        <button id="cancelEdit">Anulează</button>
+        <button id="saveEdit" class="primary" type="button">Salvează modificările</button>
+        <button id="cancelEdit" type="button">Anulează</button>
       </div>
 
       <div class="msg" id="editMsg"></div>
