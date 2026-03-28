@@ -606,7 +606,9 @@ function renderCategoryManager() {
       o.value = "Altele"; o.textContent = "Altele";
       moveSel.appendChild(o);
     }
-    moveSel.value = state.categories.includes("Educație") && cat !== "Educație" ? "Educație" : (moveSel.options[0]?.value || "Altele");
+    moveSel.value = state.categories.includes("Educație") && cat !== "Educație"
+      ? "Educație"
+      : (moveSel.options[0]?.value || "Altele");
 
     row.querySelector(`#${btnId}`).addEventListener("click", () => {
       const newName = (row.querySelector(`#${inputId}`).value || "").trim();
@@ -926,7 +928,7 @@ function drawPie(canvas, dataPairs) {
     ctx.fillStyle = "#666";
     ctx.font = "14px -apple-system, system-ui, Arial";
     ctx.textAlign = "center";
-    ctx.fillText("Nu există cheltuieli în luna curentă.", cx, cy);
+    ctx.fillText("Nu există cheltuieli în perioada asta.", cx, cy);
     return;
   }
 
@@ -939,11 +941,9 @@ function drawPie(canvas, dataPairs) {
     ctx.closePath();
     ctx.fillStyle = p.color;
     ctx.fill();
-
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 2;
     ctx.stroke();
-
     angle += slice;
   });
 
@@ -962,17 +962,11 @@ function drawPie(canvas, dataPairs) {
 
 function renderPie(monthTxs) {
   const map = expenseByCategory(monthTxs);
-  const pairs = Object.entries(map).map(([name, bani]) => ({ name, value: bani })).sort((a,b)=>b.value - a.value);
+  const pairs = Object.entries(map)
+    .map(([name, bani]) => ({ name, value: bani }))
+    .sort((a,b)=>b.value - a.value);
 
-  const max = 8;
-  let finalPairs = pairs;
-  if (pairs.length > max) {
-    const top = pairs.slice(0, max);
-    const rest = pairs.slice(max).reduce((s,p)=>s+p.value, 0);
-    top.push({ name: "Altele", value: rest });
-    finalPairs = top;
-  }
-  finalPairs = finalPairs.map((p, i) => ({ ...p, color: colorForIndex(i, finalPairs.length) }));
+  const finalPairs = pairs.map((p, i) => ({ ...p, color: colorForIndex(i, pairs.length) }));
 
   const canvas = document.getElementById("pieCanvas");
   if (canvas) drawPie(canvas, finalPairs);
@@ -1011,16 +1005,10 @@ function buildReportHTML(startISO, endISO) {
   const rows = txs.slice().sort((a,b)=>new Date(a.dateISO)-new Date(b.dateISO));
   const now = new Date();
 
-  const pairs = catPairs.map(([name, value]) => ({ name, value }));
-  const max = 8;
-  let finalPairs = pairs;
-  if (pairs.length > max) {
-    const top = pairs.slice(0, max);
-    const rest = pairs.slice(max).reduce((s,p)=>s+p.value, 0);
-    top.push({ name: "Altele", value: rest });
-    finalPairs = top;
-  }
-  finalPairs = finalPairs.map((p, i) => ({ ...p, color: colorForIndex(i, finalPairs.length) }));
+  // IMPORTANT: fără grupare în „Altele” — arătăm toate categoriile
+  const finalPairs = catPairs.map(([name, value], i) => ({
+    name, value, color: colorForIndex(i, catPairs.length)
+  }));
 
   function budgetClass(b) {
     if (b === "Venit") return "b-venit";
@@ -1085,10 +1073,7 @@ canvas{ display:block; margin:10px 0 6px; border:1px solid #ddd; border-radius:1
 .b-cheltuieli{ color:#111; font-weight:900; }
 .b-economii{ color:#0a7a2f; font-weight:900; }
 .b-venit{ color:#0b5fff; font-weight:900; }
-
-/* ROSU doar pe primele 7 coloane (Data, Tip, Categorie, Din, În, Sumă, Detalii) */
 .tx-red td:nth-child(-n+7){ color:#b00020; font-weight:900; }
-
 @media print{ .btn{ display:none; } body{ margin:0.6in; } }
 </style></head><body>
 <h1>Raport buget</h1>
