@@ -67,8 +67,10 @@ input, select, button {
 button { background: #fff; font-weight: 900; }
 button.primary { background: #111; color: #fff; border-color: #111; }
 
+button.danger { background: #b00020; color: #fff; border-color: #b00020; }
+
 .row { display: flex; gap: 10px; flex-wrap: wrap; }
-.row input { flex: 1 1 220px; }
+.row input, .row select { flex: 1 1 220px; }
 .row button { width: auto; padding: 10px 12px; flex: 0 0 auto; }
 
 .hint { font-size: 12px; opacity: .75; margin-top: 6px; }
@@ -108,7 +110,6 @@ button.primary { background: #111; color: #fff; border-color: #111; }
   background: #fff;
 }
 
-/* Reminder backup */
 .warn{
   border: 1px solid #f0d6a7;
   background: #fff7e6;
@@ -125,7 +126,6 @@ button.primary { background: #111; color: #fff; border-color: #111; }
   opacity: .9;
 }
 
-/* Modal editare */
 .modal{
   position: fixed;
   inset: 0;
