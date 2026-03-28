@@ -1,11 +1,13 @@
 :root { color-scheme: light; }
 * { box-sizing: border-box; }
+
 body {
   margin: 0;
   font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
   background: #f6f6f7;
   color: #111;
 }
+
 .topbar { padding: 14px 16px; background: #111; color: #fff; }
 .title { font-weight: 800; font-size: 18px; }
 .subtitle { opacity: .8; font-size: 12px; margin-top: 2px; }
@@ -53,6 +55,7 @@ body {
 
 .formRow { margin: 10px 0; }
 label { display: block; font-weight: 900; font-size: 12px; margin-bottom: 6px; opacity: .85; }
+
 input, select, button {
   width: 100%;
   padding: 10px;
@@ -60,12 +63,16 @@ input, select, button {
   border: 1px solid #ddd;
   font-size: 15px;
 }
+
 button { background: #fff; font-weight: 900; }
 button.primary { background: #111; color: #fff; border-color: #111; }
+
 .row { display: flex; gap: 10px; flex-wrap: wrap; }
-.row button { width: auto; padding: 10px 12px; }
+.row input { flex: 1 1 220px; }
+.row button { width: auto; padding: 10px 12px; flex: 0 0 auto; }
 
 .hint { font-size: 12px; opacity: .75; margin-top: 6px; }
+
 .msg { margin-top: 10px; font-size: 13px; font-weight: 900; }
 .msg.ok { color: #0a7a2f; }
 .msg.err { color: #b00020; }
@@ -153,4 +160,5 @@ button.primary { background: #111; color: #fff; border-color: #111; }
   border-radius: 10px;
   border: 1px solid #ddd;
   background: #fff;
-  font-weight: 900;}
+  font-weight: 900;
+}
